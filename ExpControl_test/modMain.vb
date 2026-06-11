@@ -6,7 +6,8 @@ Imports controldll.SpectronServiceReference
 Imports System.IO
 Imports System.Globalization
 Imports System.Collections.Generic
-
+Imports System
+Imports System.Collections
 
 Module modMain
     Public analogdata As SpectronClient
@@ -26,11 +27,10 @@ Module modMain
     'if server is down this causes a problem
     'Dim expLogAddress As String = "Z:/Data"
     'temp for when server is down
-    Dim expLogAddress As String = "C:\Users\Rb Lab\Documents"
+    Dim expLogAddress As String = "C:\Users\Rb Lab\Documents\GitHub\fqh_arbitrary_ramps\ExpControl_test\dynacode"
     ' File used by an external optimizer/control script to update loop-mode parameters shot-by-shot.
+    ' It is read from the same directory where currentExpParameters.txt is written.
     ' Expected lines: variableName = value    (also accepts variableName, value).
-
-    Dim nextExpParamFile As String = Path.Combine(expLogAddress, "\GitHub\fqh_arbitrary_ramps\ExpControl_test\dynacode\nextExpParameters.txt")
     Public repo_dir As String = "..\..\..\"
 
     'Public digitalstate(3) As Short
@@ -587,13 +587,25 @@ Module modMain
         ' New behavior: override only allowed experiment variables using nextExpParameters.txt.
         ' Unknown names are ignored, so external scripts cannot create/update variables that are
         ' not declared under the experiment file's '=====Variables===== section.
-        updateControlParamsFromTextFile(nextExpParamFile, arrList)
+        updateControlParamsFromTextFile(GetNextExpParamFilePath(expLogAddress), arrList)
 
         logControlParams(programLocation, expLogAddress, gui.dt, 0)
     End Sub
 
+    Private Function GetNextExpParamFilePath(ByVal log_Dir As String) As String
+        ' Keep nextExpParameters.txt next to currentExpParameters.txt.
+        Return Path.Combine(log_Dir, "nextExpParameters.txt")
+    End Function
+
     Private Sub updateControlParamsFromTextFile(ByVal paramFile As String, ByVal allowedVars As ArrayList)
         If Not File.Exists(paramFile) Then
+            gui.StatusLabel.Text = "File does not exist"
+            Return
+        End If
+
+        If New FileInfo(paramFile).Length = 0 Then
+            ' Empty file means: use the default gui.dtloop values loaded above.
+            gui.StatusLabel.Text = "File empty! Normal loop..."
             Return
         End If
 
@@ -608,7 +620,12 @@ Module modMain
             ' Allow the analysis/optimizer process to write the file while the run loop reads it.
             Using fs As New FileStream(paramFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
                 Using sr As New StreamReader(fs)
-                    lines = sr.ReadToEnd().Split(New String() {vbCrLf, vbLf}, StringSplitOptions.None)
+                    Dim fileText As String = sr.ReadToEnd()
+                    If fileText.Trim().Length = 0 Then
+                        ' Empty or whitespace-only file means: keep the default gui.dtloop values.
+                        Return
+                    End If
+                    lines = fileText.Split(New String() {vbCrLf, vbLf}, StringSplitOptions.None)
                 End Using
             End Using
         Catch ex As IOException
@@ -640,6 +657,7 @@ Module modMain
 
             Dim value As Double
             If Double.TryParse(valueString, NumberStyles.Float, CultureInfo.InvariantCulture, value) Then
+                gui.StatusLabel.Text = "Reading file for next shot..."
                 cp.Put(name, value)
             End If
         Next
