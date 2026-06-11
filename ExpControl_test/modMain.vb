@@ -29,7 +29,8 @@ Module modMain
     Dim expLogAddress As String = "C:\Users\Rb Lab\Documents"
     ' File used by an external optimizer/control script to update loop-mode parameters shot-by-shot.
     ' Expected lines: variableName = value    (also accepts variableName, value).
-    Dim nextExpParamFile As String = Path.Combine(expLogAddress, "nextExpParameters.txt")
+
+    Dim nextExpParamFile As String = Path.Combine(expLogAddress, "\GitHub\fqh_arbitrary_ramps\ExpControl_test\dynacode\nextExpParameters.txt")
     Public repo_dir As String = "..\..\..\"
 
     'Public digitalstate(3) As Short
