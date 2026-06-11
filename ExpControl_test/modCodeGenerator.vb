@@ -48,7 +48,7 @@ Module modCodeGenerator
                 If (s(i).Contains("=")) Then
                     t = Regex.Split(s(i), "=")
                     u = Regex.Split(t(1), ",")  'discard card number
-                    variables = variables + "Dim " + t(0) + " As Integer = " + u(0) + vbNewLine
+                    variables = variables + "Dim " + t(0).Trim() + " As Integer = " + u(0).Trim() + vbNewLine
                 End If
             End If
         Next
@@ -56,17 +56,25 @@ Module modCodeGenerator
         For i As Integer = 0 To (s.Length() - 1)
             If String.IsNullOrWhiteSpace(s(i)) <> True Then
                 t = Regex.Split(s(i), "=")
-                variables = variables + "Dim " + t(0) + " As Double = " + t(1) + vbNewLine
+                Dim constName As String = t(0).Trim()
+                Dim constValue As String = t(1).Trim()
+                variables = variables + "Dim " + constName + " As Double = " + constValue + vbNewLine
             End If
         Next
+
         s = Regex.Split(expVariables, "\n")
         For i As Integer = 0 To (s.Length() - 1)
-            t = Regex.Split(s(i), "=")
-            variables = variables + "Dim " + t(0) + " As Double = " + t(1) + vbNewLine
-            program = program + "If cp.IsDefined(" + Chr(34) + t(0) + Chr(34) + ") Then" _
-                        + vbNewLine + t(0) + "= cp.GetItem(" + Chr(34) + t(0) + Chr(34) + ")" _
-                        + vbNewLine + "Else" + vbNewLine + "cp.Put(" + Chr(34) + t(0) + Chr(34) _
-                        + "," + t(0) + ")" + vbNewLine + "End If" + vbNewLine
+            If String.IsNullOrWhiteSpace(s(i)) <> True AndAlso s(i).Contains("=") Then
+                t = Regex.Split(s(i), "=")
+                Dim expVarName As String = t(0).Trim()
+                Dim expVarDefault As String = t(1).Trim()
+
+                variables = variables + "Dim " + expVarName + " As Double = " + expVarDefault + vbNewLine
+                program = program + "If cp.IsDefined(" + Chr(34) + expVarName + Chr(34) + ") Then" _
+                            + vbNewLine + expVarName + " = cp.GetItem(" + Chr(34) + expVarName + Chr(34) + ")" _
+                            + vbNewLine + "Else" + vbNewLine + "cp.Put(" + Chr(34) + expVarName + Chr(34) _
+                            + ", " + expVarName + ")" + vbNewLine + "End If" + vbNewLine
+            End If
         Next
 
         program = program + userprogram + vbNewLine

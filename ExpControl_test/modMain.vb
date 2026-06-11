@@ -564,7 +564,8 @@ Module modMain
         Dim var As Object
         Dim counter As Integer = 0
         For Each var In arrList
-            cp.Put(var.ToString(), Double.Parse(gui.dt.Rows(gui.currentExpNo - 1).Item(counter).ToString()))
+            Dim varName As String = var.ToString().Trim()
+            cp.Put(varName, Double.Parse(gui.dt.Rows(gui.currentExpNo - 1).Item(counter).ToString(), CultureInfo.InvariantCulture))
             counter = counter + 1
         Next
         logControlParams(programLocation, modCodeGenerator.dynacode_dir, gui.dt, gui.currentExpNo - 1)
@@ -578,7 +579,8 @@ Module modMain
         Dim var As Object
         Dim counter As Integer = 0
         For Each var In arrList
-            cp.Put(var.ToString(), Double.Parse(gui.dtloop.Rows(0).Item(counter).ToString(), CultureInfo.InvariantCulture))
+            Dim varName As String = var.ToString().Trim()
+            cp.Put(varName, Double.Parse(gui.dtloop.Rows(0).Item(counter).ToString(), CultureInfo.InvariantCulture))
             counter = counter + 1
         Next
 
@@ -618,10 +620,9 @@ Module modMain
         Dim allowed As New Dictionary(Of String, String)(StringComparer.OrdinalIgnoreCase)
         Dim var As Object
         For Each var In allowedVars
-            Dim rawName As String = var.ToString()
-            Dim trimmedName As String = rawName.Trim()
+            Dim trimmedName As String = var.ToString().Trim()
             If Not allowed.ContainsKey(trimmedName) Then
-                allowed.Add(trimmedName, rawName)
+                allowed.Add(trimmedName, trimmedName)
             End If
         Next
 
@@ -752,7 +753,7 @@ Module modMain
         logExpParam = userprogramName + vbNewLine
 
         For Each var In arrList
-            varName = var.ToString()
+            varName = var.ToString().Trim()
             logExpParam = logExpParam + varName + " = " + cp.GetItem(varName).ToString() + vbNewLine
         Next
 
