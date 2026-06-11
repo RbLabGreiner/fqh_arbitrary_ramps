@@ -27,7 +27,7 @@ Next
 'quad grad
 For index As Integer = 0 To n_values - 1 'using array values as arguments to a function
     analogdata.AddRamp(array_values(index), array_values(index + 1), index * 42, (index + 1)*42, ps8_ao) 'ps8_ao
-NextNext
+Next
 
 
 
