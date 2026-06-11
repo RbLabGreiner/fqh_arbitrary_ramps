@@ -6,8 +6,6 @@ Imports controldll.SpectronServiceReference
 Imports System.IO
 Imports System.Globalization
 Imports System.Collections.Generic
-Imports System
-Imports System.Collections
 
 Module modMain
     Public analogdata As SpectronClient
@@ -599,68 +597,144 @@ Module modMain
 
     Private Sub updateControlParamsFromTextFile(ByVal paramFile As String, ByVal allowedVars As ArrayList)
         If Not File.Exists(paramFile) Then
-            gui.StatusLabel.Text = "File does not exist"
             Return
         End If
 
         If New FileInfo(paramFile).Length = 0 Then
             ' Empty file means: use the default gui.dtloop values loaded above.
-            gui.StatusLabel.Text = "File empty! Normal loop..."
+            WriteNextParamDebug(paramFile, "nextExpParameters.txt exists but is empty; using gui.dtloop defaults.")
             Return
         End If
 
-        Dim allowed As New Dictionary(Of String, Boolean)(StringComparer.OrdinalIgnoreCase)
+        ' Map the names as they appear in nextExpParameters.txt onto the exact control-parameter
+        ' names used by cp and by the generated code.  This lets nextExpParameters.txt use the
+        ' same format as currentExpParameters.txt:
+        '
+        '   ExperimentFileName
+        '   variable1 = 1.23
+        '   variable2 = 4.56
+        '
+        ' The first line is ignored because it is just the experiment/program name.
+        Dim allowed As New Dictionary(Of String, String)(StringComparer.OrdinalIgnoreCase)
         Dim var As Object
         For Each var In allowedVars
-            allowed(var.ToString().Trim()) = True
+            Dim rawName As String = var.ToString()
+            Dim trimmedName As String = rawName.Trim()
+            If Not allowed.ContainsKey(trimmedName) Then
+                allowed.Add(trimmedName, rawName)
+            End If
         Next
 
-        Dim lines As String()
+        Dim fileText As String = ""
         Try
             ' Allow the analysis/optimizer process to write the file while the run loop reads it.
             Using fs As New FileStream(paramFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
                 Using sr As New StreamReader(fs)
-                    Dim fileText As String = sr.ReadToEnd()
-                    If fileText.Trim().Length = 0 Then
-                        ' Empty or whitespace-only file means: keep the default gui.dtloop values.
-                        Return
-                    End If
-                    lines = fileText.Split(New String() {vbCrLf, vbLf}, StringSplitOptions.None)
+                    fileText = sr.ReadToEnd()
                 End Using
             End Using
         Catch ex As IOException
             ' If the file is being replaced exactly at this moment, keep the previous/default cp values.
+            WriteNextParamDebug(paramFile, "Could not read nextExpParameters.txt because it may be locked: " + ex.Message)
             Return
         End Try
 
+        If fileText.Trim().Length = 0 Then
+            ' Empty or whitespace-only file means: keep the default gui.dtloop values.
+            WriteNextParamDebug(paramFile, "nextExpParameters.txt is whitespace-only; using gui.dtloop defaults.")
+            Return
+        End If
+
+        Dim debugText As String = "Read file: " + paramFile + vbNewLine
+        debugText = debugText + "Expected format: same as currentExpParameters.txt" + vbNewLine
+        debugText = debugText + "  first line may be the experiment/program name and will be ignored" + vbNewLine
+        debugText = debugText + "  following lines should be: variableName = numericValue" + vbNewLine + vbNewLine
+        debugText = debugText + "Allowed variables from =====Variables=====:" + vbNewLine
+        For Each kvp As KeyValuePair(Of String, String) In allowed
+            debugText = debugText + "  " + kvp.Key + " -> cp key [" + kvp.Value + "]" + vbNewLine
+        Next
+        debugText = debugText + vbNewLine + "Parsed overrides:" + vbNewLine
+
+        Dim lines As String()
+        lines = fileText.Split(New String() {vbCrLf, vbLf}, StringSplitOptions.None)
+
+        Dim nUpdated As Integer = 0
+        Dim lineNumber As Integer = 0
         For Each rawLine As String In lines
+            lineNumber = lineNumber + 1
             Dim line As String = rawLine.Trim()
+
             If line.Length = 0 OrElse line.StartsWith("#") OrElse line.StartsWith("'") Then
                 Continue For
             End If
 
-            Dim parts As String()
-            If line.Contains("=") Then
-                parts = line.Split(New Char() {"="c}, 2)
-            ElseIf line.Contains(",") Then
-                parts = line.Split(New Char() {","c}, 2)
-            Else
+            ' Remove optional inline comments after the value.
+            Dim hashIndex As Integer = line.IndexOf("#"c)
+            If hashIndex >= 0 Then
+                line = line.Substring(0, hashIndex).Trim()
+            End If
+
+            ' currentExpParameters.txt has the experiment/program name on the first line.
+            ' That line has no '=' sign, so ignore it quietly instead of treating it as an error.
+            If Not line.Contains("=") Then
+                If lineNumber = 1 Then
+                    debugText = debugText + "  IGNORE first line/program name: " + rawLine + vbNewLine
+                Else
+                    debugText = debugText + "  SKIP line without '=': " + rawLine + vbNewLine
+                End If
                 Continue For
             End If
 
-            Dim name As String = parts(0).Trim()
+            Dim parts As String()
+            parts = line.Split(New Char() {"="c}, 2)
+
+            Dim nameFromFile As String = parts(0).Trim()
             Dim valueString As String = parts(1).Trim()
 
-            If Not allowed.ContainsKey(name) Then
+            If Not allowed.ContainsKey(nameFromFile) Then
+                debugText = debugText + "  SKIP unknown variable: [" + nameFromFile + "]" + vbNewLine
                 Continue For
             End If
 
             Dim value As Double
-            If Double.TryParse(valueString, NumberStyles.Float, CultureInfo.InvariantCulture, value) Then
-                gui.StatusLabel.Text = "Reading file for next shot..."
-                cp.Put(name, value)
+            If TryParseDoubleFromParameterFile(valueString, value) Then
+                Dim cpName As String = allowed(nameFromFile)
+                cp.Put(cpName, value)
+                nUpdated = nUpdated + 1
+                debugText = debugText + "  UPDATED " + nameFromFile + " -> cp key [" + cpName + "] = " + value.ToString(CultureInfo.InvariantCulture) + vbNewLine
+            Else
+                debugText = debugText + "  SKIP could not parse numeric value for " + nameFromFile + ": [" + valueString + "]" + vbNewLine
             End If
         Next
+
+        debugText = debugText + vbNewLine + "Total updated variables: " + nUpdated.ToString() + vbNewLine
+        WriteNextParamDebug(paramFile, debugText)
+    End Sub
+
+    Private Function TryParseDoubleFromParameterFile(ByVal valueString As String, ByRef value As Double) As Boolean
+        ' currentExpParameters.txt writes cp.GetItem(...).ToString(), which may use the computer's
+        ' current culture.  The optimizer may write invariant-culture values.  Try both.
+        If Double.TryParse(valueString, NumberStyles.Float, CultureInfo.InvariantCulture, value) Then
+            Return True
+        End If
+
+        If Double.TryParse(valueString, NumberStyles.Float, CultureInfo.CurrentCulture, value) Then
+            Return True
+        End If
+
+        Return False
+    End Function
+
+    Private Sub WriteNextParamDebug(ByVal paramFile As String, ByVal message As String)
+        Try
+            Dim debugFile As String = Path.Combine(Path.GetDirectoryName(paramFile), "nextExpParameters_debug.txt")
+            Using outfile As New IO.StreamWriter(debugFile, False)
+                outfile.Write(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture) + vbNewLine)
+                outfile.Write(message)
+            End Using
+        Catch ex As Exception
+            ' Never let debug logging stop the experiment loop.
+        End Try
     End Sub
 
     Sub logControlParams(ByVal programLocation As String, ByVal log_Dir As String, ByVal dt As DataTable, ByVal expNo As Integer)

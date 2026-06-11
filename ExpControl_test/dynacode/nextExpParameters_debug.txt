@@ -1,0 +1,18 @@
+2026-06-11 15:51:35.707
+Read file: C:\Users\Rb Lab\Documents\GitHub\fqh_arbitrary_ramps\ExpControl_test\dynacode\nextExpParameters.txt
+Expected format: same as currentExpParameters.txt
+  first line may be the experiment/program name and will be ignored
+  following lines should be: variableName = numericValue
+
+Allowed variables from =====Variables=====:
+  start_var -> cp key [start_var ]
+  end_var -> cp key [end_var ]
+  ramp_time -> cp key [ramp_time ]
+
+Parsed overrides:
+  IGNORE first line/program name: readArrayExample
+  UPDATED start_var -> cp key [start_var ] = 4
+  UPDATED end_var -> cp key [end_var ] = 0
+  UPDATED ramp_time -> cp key [ramp_time ] = 100
+
+Total updated variables: 3
