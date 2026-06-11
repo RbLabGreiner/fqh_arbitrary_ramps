@@ -7,7 +7,6 @@ Imports System.IO
 Imports System.Globalization
 Imports System.Collections.Generic
 
-
 Module modMain
     Public analogdata As SpectronClient
     'Public analogdata2 As SpectronClient
