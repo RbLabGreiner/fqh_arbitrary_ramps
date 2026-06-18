@@ -68,16 +68,34 @@ Public Class frmGUI
     End Sub
 
     Private Sub AddRunFLoopAndLogFeedbackButtons()
-        ' Add "Run f-loop" next to the existing "Load program" button.
+        ' Put "Run f-loop" where "Load program" used to be, then move "Load program" to the right.
         If RunFLoopButton Is Nothing Then
+            Dim loadProgramOriginalLocation As Point
+            loadProgramOriginalLocation = ChooseProgramButton.Location
+
             RunFLoopButton = New Button()
             RunFLoopButton.Name = "RunFLoopButton"
             RunFLoopButton.Text = "Run f-loop"
             RunFLoopButton.Size = ChooseProgramButton.Size
-            RunFLoopButton.Location = New Point(ChooseProgramButton.Right + 6, ChooseProgramButton.Top)
+            RunFLoopButton.Location = loadProgramOriginalLocation
             RunFLoopButton.Anchor = ChooseProgramButton.Anchor
+
+            ' Match the visual/icon style of the existing Run Batch button as closely as possible.
+            RunFLoopButton.Image = BatchButton.Image
+            RunFLoopButton.ImageAlign = BatchButton.ImageAlign
+            RunFLoopButton.TextAlign = BatchButton.TextAlign
+            RunFLoopButton.TextImageRelation = BatchButton.TextImageRelation
+            RunFLoopButton.FlatStyle = BatchButton.FlatStyle
+            RunFLoopButton.Font = BatchButton.Font
+            RunFLoopButton.BackColor = BatchButton.BackColor
+            RunFLoopButton.ForeColor = BatchButton.ForeColor
+            RunFLoopButton.UseVisualStyleBackColor = BatchButton.UseVisualStyleBackColor
+
+            ChooseProgramButton.Location = New Point(RunFLoopButton.Right + 6, RunFLoopButton.Top)
+
             ChooseProgramButton.Parent.Controls.Add(RunFLoopButton)
             RunFLoopButton.BringToFront()
+            ChooseProgramButton.BringToFront()
         End If
 
         ' Add "Log feedback" next to the existing "Load log file" button.
@@ -304,9 +322,34 @@ Public Class frmGUI
     End Sub
 
     Private Sub LogFeedbackButton_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles LogFeedbackButton.Click
-        ' Reuse the existing logging behavior. If you later add a separate feedback logger,
-        ' replace this call with that routine.
-        logExp_Button_Click(sender, e)
+        ' Feedback logging is intentionally separate from batch experiment-parameter logging.
+        LogFeedback()
+    End Sub
+
+    Private Sub LogFeedback()
+        ' Feedback-specific routine called by the "Log feedback" button.
+        ' This appends a timestamped feedback entry to a text file selected by the user.
+        ' You can later replace the body of this routine with a more experiment-specific logger.
+
+        Dim feedbackValue As String
+        feedbackValue = InputBox("Enter feedback value or note to log:", "Log feedback")
+
+        If feedbackValue Is Nothing OrElse feedbackValue.Trim().Length = 0 Then
+            Return
+        End If
+
+        With SaveFileDialog
+            .Title = "Save feedback log"
+            .Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*"
+            .FileName = "FeedbackLog.txt"
+
+            If .ShowDialog = System.Windows.Forms.DialogResult.OK Then
+                Dim entry As String
+                entry = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") & " ,  " & feedbackValue.Trim() & Environment.NewLine
+                My.Computer.FileSystem.WriteAllText(.FileName, entry, True)
+                MsgBox("Feedback logged to:" & vbCrLf & .FileName, vbInformation, "Log feedback")
+            End If
+        End With
     End Sub
 
     Private Sub frmGUI_Closing(ByVal sender As Object, ByVal e As System.ComponentModel.CancelEventArgs) Handles MyBase.Closing
