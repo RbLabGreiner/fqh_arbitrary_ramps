@@ -1,4 +1,4 @@
 readArrayExample
-start_var  = 4
-end_var  = 4
-ramp_time  = 100
+start_var = 4
+end_var = 4
+ramp_time = 100

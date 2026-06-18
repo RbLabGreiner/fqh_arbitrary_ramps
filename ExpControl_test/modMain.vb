@@ -325,7 +325,7 @@ Module modMain
             End If
             If gui.runningState = gui.continuous Then
                 If isFLoopRunMode Then
-                    gui.StatusLabel.Text = "Running feedback loop"
+                    gui.StatusLabel.Text = "Running feedback loop..."
                 Else
                     gui.StatusLabel.Text = "Running in loop..."
                 End If

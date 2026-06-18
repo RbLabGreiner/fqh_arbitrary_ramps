@@ -1,4 +1,4 @@
-2026-06-18 13:27:40.237
+2026-06-18 13:40:33.822
 Read file: C:\Users\Rb Lab\Documents\GitHub\fqh_arbitrary_ramps\Data_folder\nextExpParameters.txt
 Expected format: same as currentExpParameters.txt
   first line may be the experiment/program name and will be ignored
