@@ -1,4 +1,4 @@
-2026-06-18 11:42:05.352
+2026-06-18 11:50:19.026
 Read file: C:\Users\Rb Lab\Documents\GitHub\fqh_arbitrary_ramps\ExpControl_test\dynacode\nextExpParameters.txt
 Expected format: same as currentExpParameters.txt
   first line may be the experiment/program name and will be ignored
