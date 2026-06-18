@@ -25,7 +25,7 @@ Module modMain
     'if server is down this causes a problem
     'Dim expLogAddress As String = "Z:/Data"
     'temp for when server is down
-    Dim expLogAddress As String = "C:\Users\Rb Lab\Documents"
+    Dim expLogAddress As String = "C:\Users\Rb Lab\Documents\GitHub\fqh_arbitrary_ramps\ExpControl_test\dynacode"
     ' File used by an external optimizer/control script to update loop-mode parameters shot-by-shot.
     ' It is read from the same directory where currentExpParameters.txt is written.
     ' Expected lines: variableName = value    (also accepts variableName, value).
@@ -819,9 +819,9 @@ Module modMain
                     outfile.WriteLine("==========================")
 
                     outfile.Write("timestamp ,  expNo ,  ")
-                    Dim var As Object
-                    For Each var In arrList
-                        outfile.Write(var.ToString().Trim() + " ,  ")
+                    Dim expvar As Object
+                    For Each expvar In arrList
+                        outfile.Write(expvar.ToString().Trim() + " ,  ")
                     Next
                     outfile.WriteLine()
                     outfile.WriteLine("--------------------------")
