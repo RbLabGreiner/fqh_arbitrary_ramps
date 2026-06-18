@@ -80,8 +80,8 @@ Public Class frmGUI
             RunFLoopButton.Location = loadProgramOriginalLocation
             RunFLoopButton.Anchor = ChooseProgramButton.Anchor
 
-            ' Match the visual/icon style of the existing Run Batch button as closely as possible.
-            RunFLoopButton.Image = BatchButton.Image
+            ' Match the Run Batch button style, but use a red-square F icon for f-loop.
+            RunFLoopButton.Image = CreateRunFLoopIcon()
             RunFLoopButton.ImageAlign = BatchButton.ImageAlign
             RunFLoopButton.TextAlign = BatchButton.TextAlign
             RunFLoopButton.TextImageRelation = BatchButton.TextImageRelation
@@ -98,18 +98,55 @@ Public Class frmGUI
             ChooseProgramButton.BringToFront()
         End If
 
-        ' Add "Log feedback" next to the existing "Load log file" button.
+        ' Keep the original "Log Experiment" button and add "Log feedback" to the left of "Load log file".
         If LogFeedbackButton Is Nothing Then
+            Dim loadLogOriginalLocation As Point
+            loadLogOriginalLocation = loadLog_button.Location
+
             LogFeedbackButton = New Button()
             LogFeedbackButton.Name = "LogFeedbackButton"
             LogFeedbackButton.Text = "Log feedback"
             LogFeedbackButton.Size = loadLog_button.Size
-            LogFeedbackButton.Location = New Point(loadLog_button.Right + 6, loadLog_button.Top)
+            LogFeedbackButton.Location = loadLogOriginalLocation
             LogFeedbackButton.Anchor = loadLog_button.Anchor
+
+            loadLog_button.Location = New Point(LogFeedbackButton.Right + 6, LogFeedbackButton.Top)
+
             loadLog_button.Parent.Controls.Add(LogFeedbackButton)
             LogFeedbackButton.BringToFront()
+            loadLog_button.BringToFront()
+
+            logExp_Button.Visible = True
+            logExp_Button.Enabled = True
+            logExp_Button.BringToFront()
         End If
     End Sub
+
+    Private Function CreateRunFLoopIcon() As Image
+        ' Create a small red square icon with a white "F", in the same role as the Batch button icon.
+        Dim bmp As New Bitmap(16, 16)
+        Using g As Graphics = Graphics.FromImage(bmp)
+            g.Clear(Color.Transparent)
+
+            Using redBrush As New SolidBrush(Color.Red)
+                g.FillRectangle(redBrush, 0, 0, 15, 15)
+            End Using
+
+            Using borderPen As New Pen(Color.DarkRed)
+                g.DrawRectangle(borderPen, 0, 0, 15, 15)
+            End Using
+
+            Using letterFont As New Font("Arial", 10, FontStyle.Bold, GraphicsUnit.Pixel)
+                Using whiteBrush As New SolidBrush(Color.White)
+                    Dim format As New StringFormat()
+                    format.Alignment = StringAlignment.Center
+                    format.LineAlignment = StringAlignment.Center
+                    g.DrawString("F", letterFont, whiteBrush, New RectangleF(0, 0, 16, 16), format)
+                End Using
+            End Using
+        End Using
+        Return bmp
+    End Function
 
     Public Sub buildDataTables()
 
@@ -338,20 +375,20 @@ Public Class frmGUI
             Return
         End If
 
-    Using feedbackSaveDialog As New System.Windows.Forms.SaveFileDialog()
-        With feedbackSaveDialog
-            .Title = "Save feedback log"
-            .Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*"
-            .FileName = "FeedbackLog.txt"
+        Using feedbackSaveDialog As New System.Windows.Forms.SaveFileDialog()
+            With feedbackSaveDialog
+                .Title = "Save feedback log"
+                .Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*"
+                .FileName = "FeedbackLog.txt"
 
-            If .ShowDialog() = System.Windows.Forms.DialogResult.OK Then
-                Dim entry As String
-                entry = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") & " ,  " & feedbackValue.Trim() & Environment.NewLine
-                My.Computer.FileSystem.WriteAllText(.FileName, entry, True)
-                MsgBox("Feedback logged to:" & vbCrLf & .FileName, MsgBoxStyle.Information, "Log feedback")
-            End If
-        End With
-    End Using
+                If .ShowDialog() = System.Windows.Forms.DialogResult.OK Then
+                    Dim entry As String
+                    entry = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") & " ,  " & feedbackValue.Trim() & Environment.NewLine
+                    My.Computer.FileSystem.WriteAllText(.FileName, entry, True)
+                    MsgBox("Feedback logged to:" & vbCrLf & .FileName, MsgBoxStyle.Information, "Log feedback")
+                End If
+            End With
+        End Using
     End Sub
 
     Private Sub frmGUI_Closing(ByVal sender As Object, ByVal e As System.ComponentModel.CancelEventArgs) Handles MyBase.Closing
