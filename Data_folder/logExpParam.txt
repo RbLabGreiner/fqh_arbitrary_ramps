@@ -1,0 +1,15 @@
+Experiment Log
+C:\Users\Rb Lab\Documents\GitHub\fqh_arbitrary_ramps\Data_folder\
+
+6/18/2026 12:02:24 PM
+
+Experiment Program Used:
+C:\Users\Rb Lab\Documents\GitHub\fqh_arbitrary_ramps\Timeline\Analysis\2026_06_11_parameter_update_test\readArrayExample.vb
+
+Batch Length:  
+1
+
+==========================
+start_var ,  end_var ,  ramp_time ,  
+--------------------------
+4,  0,  100,  
