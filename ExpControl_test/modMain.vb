@@ -676,7 +676,10 @@ Module modMain
             End If
 
             ' Only Run f-loop reads nextExpParameters.txt.
-            updateControlParamsFromTextFile(GetNextExpParamFilePath(fLoopDir), arrList)
+            ' If it does not exist yet, create it from the current GUI loop-row parameters.
+            Dim nextParamFile As String = GetNextExpParamFilePath(fLoopDir)
+            EnsureNextExpParametersFile(nextParamFile, arrList)
+            updateControlParamsFromTextFile(nextParamFile, arrList)
 
             ' In Run f-loop, all f-loop files go to the feedback directory.
             logControlParams(programLocation, fLoopDir, gui.dtloop, 0)
@@ -691,6 +694,38 @@ Module modMain
         ' Keep nextExpParameters.txt next to currentExpParameters.txt.
         Return Path.Combine(log_Dir, "nextExpParameters.txt")
     End Function
+
+    Private Sub EnsureNextExpParametersFile(ByVal paramFile As String, ByVal allowedVars As ArrayList)
+        ' In feedback-loop mode, nextExpParameters.txt is the handoff file used by
+        ' an external optimizer.  If the file has not been created yet, initialize it
+        ' from the current GUI loop-row parameters so the first feedback-loop shot
+        ' has a valid starting point and the optimizer has a template to edit.
+        Try
+            If File.Exists(paramFile) Then
+                Return
+            End If
+
+            Dim dirName As String = Path.GetDirectoryName(paramFile)
+            If dirName IsNot Nothing AndAlso dirName.Length > 0 AndAlso Not Directory.Exists(dirName) Then
+                Directory.CreateDirectory(dirName)
+            End If
+
+            Dim userprogramName As String = Path.GetFileNameWithoutExtension(programLocation)
+            Using outfile As New IO.StreamWriter(paramFile, False)
+                outfile.WriteLine(userprogramName)
+
+                Dim expVar As Object
+                For Each expVar In allowedVars
+                    Dim varName As String = expVar.ToString().Trim()
+                    outfile.WriteLine(varName & " = " & cp.GetItem(varName).ToString())
+                Next
+            End Using
+
+            WriteNextParamDebug(paramFile, "nextExpParameters.txt was not found, so it was created from the current GUI loop parameters." & vbNewLine & "Created file: " & paramFile)
+        Catch ex As Exception
+            WriteNextParamDebug(paramFile, "Tried to create nextExpParameters.txt from the current GUI loop parameters, but failed: " & ex.Message)
+        End Try
+    End Sub
 
     Private Sub updateControlParamsFromTextFile(ByVal paramFile As String, ByVal allowedVars As ArrayList)
         If Not File.Exists(paramFile) Then
