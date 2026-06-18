@@ -9,6 +9,9 @@ Public Class frmGUI
     ' Extra buttons added programmatically so the Designer file does not need to be edited.
     Public WithEvents RunFLoopButton As Button
     Public WithEvents LogFeedbackButton As Button
+    Private runFLoopReadyBackColor As Color
+    Private runFLoopReadyForeColor As Color
+    Private runFLoopReadyUseVisualStyleBackColor As Boolean
 
     Public inter As clsInteractive
     Dim gui_autofill As New frmGUI_autofill(Me)
@@ -91,6 +94,11 @@ Public Class frmGUI
             RunFLoopButton.ForeColor = BatchButton.ForeColor
             RunFLoopButton.UseVisualStyleBackColor = BatchButton.UseVisualStyleBackColor
 
+            runFLoopReadyBackColor = RunFLoopButton.BackColor
+            runFLoopReadyForeColor = RunFLoopButton.ForeColor
+            runFLoopReadyUseVisualStyleBackColor = RunFLoopButton.UseVisualStyleBackColor
+            SetRunFLoopProgramLoaded(False)
+
             ChooseProgramButton.Location = New Point(RunFLoopButton.Right + 6, RunFLoopButton.Top)
 
             ChooseProgramButton.Parent.Controls.Add(RunFLoopButton)
@@ -125,6 +133,39 @@ Public Class frmGUI
             logExp_Button.Visible = True
             logExp_Button.Enabled = True
             logExp_Button.BringToFront()
+        End If
+    End Sub
+
+    Public Sub SetRunFLoopProgramLoaded(ByVal programLoaded As Boolean)
+        If RunFLoopButton Is Nothing Then
+            Return
+        End If
+
+        If programLoaded Then
+            RunFLoopButton.Enabled = True
+            RunFLoopButton.UseVisualStyleBackColor = runFLoopReadyUseVisualStyleBackColor
+            RunFLoopButton.BackColor = runFLoopReadyBackColor
+            RunFLoopButton.ForeColor = runFLoopReadyForeColor
+        Else
+            RunFLoopButton.Enabled = False
+            RunFLoopButton.UseVisualStyleBackColor = False
+            RunFLoopButton.BackColor = Color.FromArgb(64, 64, 64)
+            RunFLoopButton.ForeColor = Color.LightGray
+        End If
+    End Sub
+
+    Public Sub SetRunFLoopRunning(ByVal running As Boolean)
+        If RunFLoopButton Is Nothing Then
+            Return
+        End If
+
+        If running Then
+            RunFLoopButton.Enabled = False
+            RunFLoopButton.UseVisualStyleBackColor = False
+            RunFLoopButton.BackColor = Color.FromArgb(0, 90, 180)
+            RunFLoopButton.ForeColor = Color.White
+        Else
+            SetRunFLoopProgramLoaded(True)
         End If
     End Sub
 
@@ -362,6 +403,11 @@ Public Class frmGUI
     Private Sub RunFLoopButton_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles RunFLoopButton.Click
         ' Run f-loop is separate from the normal Run button.
         ' It enables nextExpParameters.txt reading in modMain.
+        ' Make sure the feedback/parameter directory is chosen on the GUI thread.
+        If Not EnsureFeedbackLogDirectory() Then
+            Return
+        End If
+
         Dim del As New runExperimentDelegate(AddressOf runFLoopExperiment)
         del.BeginInvoke(AddressOf experimentCompleted, del)
     End Sub

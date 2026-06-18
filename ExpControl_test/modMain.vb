@@ -203,6 +203,7 @@ Module modMain
         gui.randomizeButton.Enabled = True
 
         gui.RunButton.Enabled = True
+        gui.SetRunFLoopProgramLoaded(True)
 
         gui.RunVirtualButton.Enabled = True
 
@@ -228,6 +229,7 @@ Module modMain
             gui.StatusLabel.Text = "Ready to start next experiment..."
             gui.ChooseProgramButton.Enabled = True
             gui.RunButton.Enabled = True
+            gui.SetRunFLoopProgramLoaded(True)
 
             gui.RunVirtualButton.Enabled = True
 
@@ -242,6 +244,7 @@ Module modMain
         gui.StatusLabel.Text = "Ready to start next experiment..."
         gui.ChooseProgramButton.Enabled = True
         gui.RunButton.Enabled = True
+        gui.SetRunFLoopProgramLoaded(True)
 
         gui.RunVirtualButton.Enabled = True
 
@@ -277,6 +280,11 @@ Module modMain
         gui.runningState = gui.continuous
         gui.BatchButton.Enabled = True
         gui.RunButton.Enabled = False
+        If isFLoopRunMode Then
+            gui.SetRunFLoopRunning(True)
+        Else
+            gui.SetRunFLoopProgramLoaded(False)
+        End If
         gui.RunVirtualButton.Enabled = False
         gui.StopButton.Enabled = True
         gui.ChooseProgramButton.Enabled = False
@@ -316,7 +324,11 @@ Module modMain
                 End If
             End If
             If gui.runningState = gui.continuous Then
-                gui.StatusLabel.Text = "Running in loop..."
+                If isFLoopRunMode Then
+                    gui.StatusLabel.Text = "Running feedback loop"
+                Else
+                    gui.StatusLabel.Text = "Running in loop..."
+                End If
                 updateLoopHighlighting()
                 updateControlParamsForLoop()
             End If
@@ -464,6 +476,7 @@ Module modMain
         gui.interactiveCmdText.BackColor = Color.White
         gui.interGUI_Button.Enabled = True
         gui.interGUI_Button.BackColor = Color.White
+        gui.SetRunFLoopProgramLoaded(True)
         gui.Refresh()
         isFLoopRunMode = False
 
@@ -492,6 +505,7 @@ Module modMain
         'just run once, i.e. equiv. to gui.runningState = gui.stopping
         gui.BatchButton.Enabled = False
         gui.RunButton.Enabled = False
+        gui.SetRunFLoopProgramLoaded(False)
         gui.RunVirtualButton.Enabled = False
         gui.RunVirtualButton.Text = "  Running..."
         gui.StopButton.Enabled = False
@@ -619,7 +633,11 @@ Module modMain
     End Sub
 
     Sub updateLoopHighlighting()
-        gui.dgvloop.Rows(0).DefaultCellStyle.BackColor = Color.LightGreen
+        If isFLoopRunMode Then
+            gui.dgvloop.Rows(0).DefaultCellStyle.BackColor = Color.LightSkyBlue
+        Else
+            gui.dgvloop.Rows(0).DefaultCellStyle.BackColor = Color.LightGreen
+        End If
         gui.dgvloop.Refresh()
     End Sub
 
