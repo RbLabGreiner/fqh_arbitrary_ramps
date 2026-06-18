@@ -338,18 +338,20 @@ Public Class frmGUI
             Return
         End If
 
-        With SaveFileDialog
+    Using feedbackSaveDialog As New System.Windows.Forms.SaveFileDialog()
+        With feedbackSaveDialog
             .Title = "Save feedback log"
             .Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*"
             .FileName = "FeedbackLog.txt"
 
-            If .ShowDialog = System.Windows.Forms.DialogResult.OK Then
+            If .ShowDialog() = System.Windows.Forms.DialogResult.OK Then
                 Dim entry As String
                 entry = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") & " ,  " & feedbackValue.Trim() & Environment.NewLine
                 My.Computer.FileSystem.WriteAllText(.FileName, entry, True)
-                MsgBox("Feedback logged to:" & vbCrLf & .FileName, vbInformation, "Log feedback")
+                MsgBox("Feedback logged to:" & vbCrLf & .FileName, MsgBoxStyle.Information, "Log feedback")
             End If
         End With
+    End Using
     End Sub
 
     Private Sub frmGUI_Closing(ByVal sender As Object, ByVal e As System.ComponentModel.CancelEventArgs) Handles MyBase.Closing
