@@ -360,8 +360,10 @@ Public Class frmGUI
     End Sub
 
     Private Sub RunFLoopButton_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles RunFLoopButton.Click
-        ' Reuse the existing run-loop behavior.
-        RunButton_Click(sender, e)
+        ' Run f-loop is separate from the normal Run button.
+        ' It enables nextExpParameters.txt reading in modMain.
+        Dim del As New runExperimentDelegate(AddressOf runFLoopExperiment)
+        del.BeginInvoke(AddressOf experimentCompleted, del)
     End Sub
 
     Private Sub LogFeedbackButton_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles LogFeedbackButton.Click
@@ -370,30 +372,24 @@ Public Class frmGUI
     End Sub
 
     Private Sub LogFeedback()
-        ' Feedback-specific routine called by the "Log feedback" button.
-        ' This appends a timestamped feedback entry to a text file selected by the user.
-        ' You can later replace the body of this routine with a more experiment-specific logger.
+        ' Select the folder used by Run f-loop.
+        ' Run f-loop will read nextExpParameters.txt from this folder and will write
+        ' nextExpParameters_debug.txt, currentExpParameters.txt, and
+        ' ExpParametersRecord.txt to this same folder.
+        Using feedbackFolderDialog As New System.Windows.Forms.FolderBrowserDialog()
+            feedbackFolderDialog.Description = "Select f-loop feedback / parameter directory:"
+            feedbackFolderDialog.ShowNewFolderButton = True
 
-        Dim feedbackValue As String
-        feedbackValue = InputBox("Enter feedback value or note to log:", "Log feedback")
+            Dim currentDir As String
+            currentDir = GetFeedbackLogDirectory()
+            If currentDir IsNot Nothing AndAlso currentDir.Trim().Length > 0 AndAlso System.IO.Directory.Exists(currentDir) Then
+                feedbackFolderDialog.SelectedPath = currentDir
+            End If
 
-        If feedbackValue Is Nothing OrElse feedbackValue.Trim().Length = 0 Then
-            Return
-        End If
-
-        Using feedbackSaveDialog As New System.Windows.Forms.SaveFileDialog()
-            With feedbackSaveDialog
-                .Title = "Save feedback log"
-                .Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*"
-                .FileName = "FeedbackLog.txt"
-
-                If .ShowDialog() = System.Windows.Forms.DialogResult.OK Then
-                    Dim entry As String
-                    entry = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") & " ,  " & feedbackValue.Trim() & Environment.NewLine
-                    My.Computer.FileSystem.WriteAllText(.FileName, entry, True)
-                    MsgBox("Feedback logged to:" & vbCrLf & .FileName, MsgBoxStyle.Information, "Log feedback")
-                End If
-            End With
+            If feedbackFolderDialog.ShowDialog() = System.Windows.Forms.DialogResult.OK Then
+                SetFeedbackLogDirectory(feedbackFolderDialog.SelectedPath)
+                MsgBox("F-loop feedback directory set to:" & vbCrLf & feedbackFolderDialog.SelectedPath, MsgBoxStyle.Information, "Log feedback")
+            End If
         End Using
     End Sub
 

@@ -25,7 +25,7 @@ Module modMain
     'if server is down this causes a problem
     'Dim expLogAddress As String = "Z:/Data"
     'temp for when server is down
-    Dim expLogAddress As String = "C:\Users\Rb Lab\Documents\GitHub\fqh_arbitrary_ramps\ExpControl_test\dynacode"
+    Dim expLogAddress As String = "C:\Users\Rb Lab\Documents"
     ' File used by an external optimizer/control script to update loop-mode parameters shot-by-shot.
     ' It is read from the same directory where currentExpParameters.txt is written.
     ' Expected lines: variableName = value    (also accepts variableName, value).
@@ -82,6 +82,9 @@ Module modMain
     'Private NITransPThread2 As Thread
     'Private NITransPThread3 As Thread
     Dim experiment As Object
+
+    Private isFLoopRunMode As Boolean = False
+    Public feedbackLogDirectory As String = ""
 
 #Region "Declarations"
     'Dim DIO_board As Integer = 0
@@ -247,11 +250,27 @@ Module modMain
     End Sub
 
     Sub runExperiment()
+        runExperimentCore(False)
+    End Sub
+
+    Sub runFLoopExperiment()
+        runExperimentCore(True)
+    End Sub
+
+    Private Sub runExperimentCore(ByVal useFLoopMode As Boolean)
+        isFLoopRunMode = useFLoopMode
+
+        If isFLoopRunMode AndAlso Not EnsureFeedbackLogDirectory() Then
+            isFLoopRunMode = False
+            Return
+        End If
+
         Dim stopWatch As New Stopwatch()
         'stopWatch.Start()
         'MsgBox("run experiment")
         If (generateCode(programLocation) = -1) Then 'test compilation of the code to make sure there are no bugs in it
             MsgBox("failed to compile code")
+            isFLoopRunMode = False
             Return
         End If
         s.SendRunSignal()
@@ -446,6 +465,7 @@ Module modMain
         gui.interGUI_Button.Enabled = True
         gui.interGUI_Button.BackColor = Color.White
         gui.Refresh()
+        isFLoopRunMode = False
 
     End Sub
 
@@ -542,6 +562,51 @@ Module modMain
 
     End Sub
 
+    Public Sub SetFeedbackLogDirectory(ByVal selectedDirectory As String)
+        If selectedDirectory Is Nothing Then
+            Return
+        End If
+
+        selectedDirectory = selectedDirectory.Trim()
+        If selectedDirectory.Length = 0 Then
+            Return
+        End If
+
+        feedbackLogDirectory = selectedDirectory
+    End Sub
+
+    Public Function EnsureFeedbackLogDirectory() As Boolean
+        If feedbackLogDirectory IsNot Nothing AndAlso feedbackLogDirectory.Trim().Length > 0 AndAlso Directory.Exists(feedbackLogDirectory) Then
+            Return True
+        End If
+
+        Using folderDialog As New System.Windows.Forms.FolderBrowserDialog()
+            folderDialog.Description = "Select f-loop feedback / parameter directory:"
+            folderDialog.ShowNewFolderButton = True
+
+            If Directory.Exists(modCodeGenerator.dynacode_dir) Then
+                folderDialog.SelectedPath = modCodeGenerator.dynacode_dir
+            ElseIf Directory.Exists(expLogAddress) Then
+                folderDialog.SelectedPath = expLogAddress
+            End If
+
+            If folderDialog.ShowDialog() = System.Windows.Forms.DialogResult.OK Then
+                feedbackLogDirectory = folderDialog.SelectedPath
+                Return True
+            End If
+        End Using
+
+        Return False
+    End Function
+
+    Public Function GetFeedbackLogDirectory() As String
+        If EnsureFeedbackLogDirectory() Then
+            Return feedbackLogDirectory
+        End If
+
+        Return ""
+    End Function
+
     Delegate Sub runExperimentDelegate()
 
     Sub updateBatchHighlighting()
@@ -561,10 +626,10 @@ Module modMain
     Sub updateControlParamsForBatch()
         Dim arrList As ArrayList
         arrList = modUtilities.GetExpVariables()
-        Dim var As Object
+        Dim expVar As Object
         Dim counter As Integer = 0
-        For Each var In arrList
-            Dim varName As String = var.ToString().Trim()
+        For Each expVar In arrList
+            Dim varName As String = expVar.ToString().Trim()
             cp.Put(varName, Double.Parse(gui.dt.Rows(gui.currentExpNo - 1).Item(counter).ToString(), CultureInfo.InvariantCulture))
             counter = counter + 1
         Next
@@ -572,24 +637,36 @@ Module modMain
     End Sub
 
     Sub updateControlParamsForLoop()
-        ' Default behavior: load the loop table values.
-        ' This ensures every variable declared under '=====Variables===== has a value.
+        ' Normal Run mode keeps the original behavior: use the loop table only.
+        ' Run f-loop mode uses the loop table as defaults, then overrides from
+        ' nextExpParameters.txt in the feedback directory.
         Dim arrList As ArrayList
         arrList = modUtilities.GetExpVariables()
-        Dim var As Object
+        Dim expVar As Object
         Dim counter As Integer = 0
-        For Each var In arrList
-            Dim varName As String = var.ToString().Trim()
+
+        For Each expVar In arrList
+            Dim varName As String = expVar.ToString().Trim()
             cp.Put(varName, Double.Parse(gui.dtloop.Rows(0).Item(counter).ToString(), CultureInfo.InvariantCulture))
             counter = counter + 1
         Next
 
-        ' New behavior: override only allowed experiment variables using nextExpParameters.txt.
-        ' Unknown names are ignored, so external scripts cannot create/update variables that are
-        ' not declared under the experiment file's '=====Variables===== section.
-        updateControlParamsFromTextFile(GetNextExpParamFilePath(expLogAddress), arrList)
+        If isFLoopRunMode Then
+            Dim fLoopDir As String = GetFeedbackLogDirectory()
+            If fLoopDir.Length = 0 Then
+                Return
+            End If
 
-        logControlParams(programLocation, expLogAddress, gui.dt, 0)
+            ' Only Run f-loop reads nextExpParameters.txt.
+            updateControlParamsFromTextFile(GetNextExpParamFilePath(fLoopDir), arrList)
+
+            ' In Run f-loop, all f-loop files go to the feedback directory.
+            logControlParams(programLocation, fLoopDir, gui.dtloop, 0)
+            appendExpParametersRecord(programLocation, fLoopDir, gui.dtloop, 0)
+        Else
+            ' Old Run behavior: do not read nextExpParameters.txt.
+            logControlParams(programLocation, expLogAddress, gui.dt, 0)
+        End If
     End Sub
 
     Private Function GetNextExpParamFilePath(ByVal log_Dir As String) As String
@@ -599,6 +676,7 @@ Module modMain
 
     Private Sub updateControlParamsFromTextFile(ByVal paramFile As String, ByVal allowedVars As ArrayList)
         If Not File.Exists(paramFile) Then
+            WriteNextParamDebug(paramFile, "nextExpParameters.txt was not found; using gui.dtloop defaults." & vbNewLine & "Expected file: " & paramFile)
             Return
         End If
 
@@ -618,9 +696,9 @@ Module modMain
         '
         ' The first line is ignored because it is just the experiment/program name.
         Dim allowed As New Dictionary(Of String, String)(StringComparer.OrdinalIgnoreCase)
-        Dim var As Object
-        For Each var In allowedVars
-            Dim trimmedName As String = var.ToString().Trim()
+        Dim allowedVar As Object
+        For Each allowedVar In allowedVars
+            Dim trimmedName As String = allowedVar.ToString().Trim()
             If Not allowed.ContainsKey(trimmedName) Then
                 allowed.Add(trimmedName, trimmedName)
             End If
@@ -742,7 +820,7 @@ Module modMain
         Dim userprogramName, logExpParam, varName As String
         Dim arrList As ArrayList
         arrList = modUtilities.GetExpVariables()
-        Dim var As Object
+        Dim expVar As Object
 
         Dim t As String()
         Dim sep(3) As Char
@@ -752,16 +830,14 @@ Module modMain
         userprogramName = t(t.GetLength(0) - 2)
         logExpParam = userprogramName + vbNewLine
 
-        For Each var In arrList
-            varName = var.ToString().Trim()
+        For Each expVar In arrList
+            varName = expVar.ToString().Trim()
             logExpParam = logExpParam + varName + " = " + cp.GetItem(varName).ToString() + vbNewLine
         Next
 
         Using outfile As New IO.StreamWriter(Path.Combine(log_Dir, "currentExpParameters.txt"))
             outfile.Write(logExpParam)
         End Using
-
-        appendExpParametersRecord(programLocation, log_Dir, dt, expNo)
     End Sub
 
     Private Sub appendExpParametersRecord(ByVal programLocation As String, ByVal log_Dir As String, ByVal dt As DataTable, ByVal expNo As Integer)
@@ -819,9 +895,9 @@ Module modMain
                     outfile.WriteLine("==========================")
 
                     outfile.Write("timestamp ,  expNo ,  ")
-                    Dim expvar As Object
-                    For Each expvar In arrList
-                        outfile.Write(expvar.ToString().Trim() + " ,  ")
+                    Dim headerVar As Object
+                    For Each headerVar In arrList
+                        outfile.Write(headerVar.ToString().Trim() & " ,  ")
                     Next
                     outfile.WriteLine()
                     outfile.WriteLine("--------------------------")
@@ -830,9 +906,9 @@ Module modMain
                 outfile.Write(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture) + ",  ")
                 outfile.Write(expNo.ToString(CultureInfo.InvariantCulture) + ",  ")
 
-                Dim var As Object
-                For Each var In arrList
-                    Dim varName As String = var.ToString().Trim()
+                Dim rowVar As Object
+                For Each rowVar In arrList
+                    Dim varName As String = rowVar.ToString().Trim()
                     outfile.Write(cp.GetItem(varName).ToString() + ",  ")
                 Next
                 outfile.WriteLine()
