@@ -5,6 +5,11 @@ Public Class frmGUI
     Public dt As DataTable
     Public WithEvents dgvloop As DataGridView
     Public dtloop As DataTable
+
+    ' Extra buttons added programmatically so the Designer file does not need to be edited.
+    Public WithEvents RunFLoopButton As Button
+    Public WithEvents LogFeedbackButton As Button
+
     Public inter As clsInteractive
     Dim gui_autofill As New frmGUI_autofill(Me)
     Public runningState As Integer
@@ -58,6 +63,34 @@ Public Class frmGUI
         linearRadio.Select()
 
         runningState = stopped
+
+        AddRunFLoopAndLogFeedbackButtons()
+    End Sub
+
+    Private Sub AddRunFLoopAndLogFeedbackButtons()
+        ' Add "Run f-loop" next to the existing "Load program" button.
+        If RunFLoopButton Is Nothing Then
+            RunFLoopButton = New Button()
+            RunFLoopButton.Name = "RunFLoopButton"
+            RunFLoopButton.Text = "Run f-loop"
+            RunFLoopButton.Size = ChooseProgramButton.Size
+            RunFLoopButton.Location = New Point(ChooseProgramButton.Right + 6, ChooseProgramButton.Top)
+            RunFLoopButton.Anchor = ChooseProgramButton.Anchor
+            ChooseProgramButton.Parent.Controls.Add(RunFLoopButton)
+            RunFLoopButton.BringToFront()
+        End If
+
+        ' Add "Log feedback" next to the existing "Load log file" button.
+        If LogFeedbackButton Is Nothing Then
+            LogFeedbackButton = New Button()
+            LogFeedbackButton.Name = "LogFeedbackButton"
+            LogFeedbackButton.Text = "Log feedback"
+            LogFeedbackButton.Size = loadLog_button.Size
+            LogFeedbackButton.Location = New Point(loadLog_button.Right + 6, loadLog_button.Top)
+            LogFeedbackButton.Anchor = loadLog_button.Anchor
+            loadLog_button.Parent.Controls.Add(LogFeedbackButton)
+            LogFeedbackButton.BringToFront()
+        End If
     End Sub
 
     Public Sub buildDataTables()
@@ -263,6 +296,17 @@ Public Class frmGUI
         'If runningState = batch Or runningState = batchstopping Then
         'End If
 
+    End Sub
+
+    Private Sub RunFLoopButton_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles RunFLoopButton.Click
+        ' Reuse the existing run-loop behavior.
+        RunButton_Click(sender, e)
+    End Sub
+
+    Private Sub LogFeedbackButton_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles LogFeedbackButton.Click
+        ' Reuse the existing logging behavior. If you later add a separate feedback logger,
+        ' replace this call with that routine.
+        logExp_Button_Click(sender, e)
     End Sub
 
     Private Sub frmGUI_Closing(ByVal sender As Object, ByVal e As System.ComponentModel.CancelEventArgs) Handles MyBase.Closing
