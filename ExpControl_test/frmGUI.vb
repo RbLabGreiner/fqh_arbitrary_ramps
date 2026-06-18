@@ -98,7 +98,9 @@ Public Class frmGUI
             ChooseProgramButton.BringToFront()
         End If
 
-        ' Keep the original "Log Experiment" button and add "Log feedback" to the left of "Load log file".
+        ' Keep the original "Log Experiment" button and add "Log feedback" immediately
+        ' to the LEFT of the existing "Load log file" button. Do not move the
+        ' Load-log button; moving it to the right can push it off the visible form.
         If LogFeedbackButton Is Nothing Then
             Dim loadLogOriginalLocation As Point
             loadLogOriginalLocation = loadLog_button.Location
@@ -107,10 +109,14 @@ Public Class frmGUI
             LogFeedbackButton.Name = "LogFeedbackButton"
             LogFeedbackButton.Text = "Log feedback"
             LogFeedbackButton.Size = loadLog_button.Size
-            LogFeedbackButton.Location = loadLogOriginalLocation
+            LogFeedbackButton.Location = New Point(loadLogOriginalLocation.X - LogFeedbackButton.Width - 6, loadLogOriginalLocation.Y)
             LogFeedbackButton.Anchor = loadLog_button.Anchor
+            LogFeedbackButton.Visible = True
+            LogFeedbackButton.Enabled = True
 
-            loadLog_button.Location = New Point(LogFeedbackButton.Right + 6, LogFeedbackButton.Top)
+            loadLog_button.Visible = True
+            loadLog_button.Enabled = True
+            loadLog_button.Location = loadLogOriginalLocation
 
             loadLog_button.Parent.Controls.Add(LogFeedbackButton)
             LogFeedbackButton.BringToFront()
