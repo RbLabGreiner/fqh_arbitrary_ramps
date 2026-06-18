@@ -25,7 +25,7 @@ Module modMain
     'if server is down this causes a problem
     'Dim expLogAddress As String = "Z:/Data"
     'temp for when server is down
-    Dim expLogAddress As String = "C:\Users\Rb Lab\Documents\GitHub\fqh_arbitrary_ramps\ExpControl_test\dynacode"
+    Dim expLogAddress As String = "C:\Users\Rb Lab\Documents"
     ' File used by an external optimizer/control script to update loop-mode parameters shot-by-shot.
     ' It is read from the same directory where currentExpParameters.txt is written.
     ' Expected lines: variableName = value    (also accepts variableName, value).
@@ -760,6 +760,86 @@ Module modMain
         Using outfile As New IO.StreamWriter(Path.Combine(log_Dir, "currentExpParameters.txt"))
             outfile.Write(logExpParam)
         End Using
+
+        appendExpParametersRecord(programLocation, log_Dir, dt, expNo)
+    End Sub
+
+    Private Sub appendExpParametersRecord(ByVal programLocation As String, ByVal log_Dir As String, ByVal dt As DataTable, ByVal expNo As Integer)
+        ' Append a permanent record of the exact parameters that were written to
+        ' currentExpParameters.txt for this shot.  The file format follows the
+        ' existing Experiment Log style:
+        '
+        '   Experiment Log
+        '   <log directory>
+        '
+        '   <file creation time>
+        '
+        '   Experiment Program Used:
+        '   <program path>
+        '
+        '   Batch Length:
+        '   <number of rows in dt, or 1 for loop mode>
+        '
+        '   ==========================
+        '   timestamp ,  expNo ,  var1 ,  var2 ,  ...
+        '   --------------------------
+        '   2026-06-11 15:55:38.709,  0,  value1,  value2,  ...
+        '
+        ' The row values are taken from cp after gui.dtloop defaults and
+        ' nextExpParameters.txt overrides have both been applied.
+        Try
+            Dim recordFile As String = Path.Combine(log_Dir, "ExpParametersRecord.txt")
+            Dim arrList As ArrayList = modUtilities.GetExpVariables()
+            Dim writeHeader As Boolean = True
+
+            If File.Exists(recordFile) Then
+                Dim info As New FileInfo(recordFile)
+                If info.Length > 0 Then
+                    writeHeader = False
+                End If
+            End If
+
+            Using outfile As New IO.StreamWriter(recordFile, True)
+                If writeHeader Then
+                    outfile.WriteLine("Experiment Log")
+                    outfile.WriteLine(log_Dir)
+                    outfile.WriteLine()
+                    outfile.WriteLine(DateTime.Now.ToString("M/d/yyyy h:mm:ss tt", CultureInfo.InvariantCulture))
+                    outfile.WriteLine()
+                    outfile.WriteLine("Experiment Program Used:")
+                    outfile.WriteLine(programLocation)
+                    outfile.WriteLine()
+                    outfile.WriteLine("Batch Length:  ")
+                    If dt IsNot Nothing AndAlso dt.Rows.Count > 0 Then
+                        outfile.WriteLine(dt.Rows.Count.ToString(CultureInfo.InvariantCulture))
+                    Else
+                        outfile.WriteLine("1")
+                    End If
+                    outfile.WriteLine()
+                    outfile.WriteLine("==========================")
+
+                    outfile.Write("timestamp ,  expNo ,  ")
+                    Dim var As Object
+                    For Each var In arrList
+                        outfile.Write(var.ToString().Trim() + " ,  ")
+                    Next
+                    outfile.WriteLine()
+                    outfile.WriteLine("--------------------------")
+                End If
+
+                outfile.Write(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture) + ",  ")
+                outfile.Write(expNo.ToString(CultureInfo.InvariantCulture) + ",  ")
+
+                Dim var As Object
+                For Each var In arrList
+                    Dim varName As String = var.ToString().Trim()
+                    outfile.Write(cp.GetItem(varName).ToString() + ",  ")
+                Next
+                outfile.WriteLine()
+            End Using
+        Catch ex As Exception
+            ' Never let record logging stop the experiment loop.
+        End Try
     End Sub
 
 End Module
